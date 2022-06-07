@@ -8,36 +8,72 @@ class BowlingTests {
     @Test
     fun `new game`() {
         val game: IncompleteGame = newGame(listOf("Fred", "Barney"))
-        assertEquals("Fred", game.toRoll)
-        assertEquals(Score(0), game.lines[0].score)
-        assertEquals(Score(0), game.lines[1].score)
+        game.hasState("Fred", 0, 0)
     }
 
     @Test
     fun `play a short game`() {
         var game: Game = newGame(listOf("Fred", "Barney"), 1)
-        game as IncompleteGame
-        assertEquals("Fred", game.toRoll)
-        assertEquals(Score(0), game.lines[0].score)
-        assertEquals(Score(0), game.lines[1].score)
+        (game as IncompleteGame).hasState("Fred", 0, 0)
 
-        game = game.roll(PinCount(4)) as IncompleteGame
-        assertEquals("Fred", game.toRoll)
-        assertEquals(Score(4), game.lines[0].score)
-        assertEquals(Score(0), game.lines[1].score)
+        game = game.roll(PinCount(4))
+        (game as IncompleteGame).hasState("Fred", 4, 0)
 
-        game = game.roll(PinCount(5)) as IncompleteGame
-        assertEquals("Barney", game.toRoll)
-        assertEquals(Score(9), game.lines[0].score)
-        assertEquals(Score(0), game.lines[1].score)
+        game = game.roll(PinCount(5))
+        (game as IncompleteGame).hasState("Barney", 9, 0)
 
-        game = game.roll(PinCount(1)) as IncompleteGame
-        assertEquals("Barney", game.toRoll)
-        assertEquals(Score(9), game.lines[0].score)
-        assertEquals(Score(1), game.lines[1].score)
+        game = game.roll(PinCount(1))
+        (game as IncompleteGame).hasState("Barney", 9, 1)
 
-        game = game.roll(PinCount(2)) as CompleteGame
-        assertEquals(Score(9), game.lines[0].score)
-        assertEquals(Score(3), game.lines[1].score)
+        game = game.roll(PinCount(2))
+        (game as CompleteGame).hasScores(9, 3)
+    }
+
+    @Test
+    fun `spare`() {
+        var game: Game = newGame(listOf("Fred"), 2)
+        (game as IncompleteGame).hasState("Fred", 0)
+
+        game = game.roll(PinCount(4))
+        (game as IncompleteGame).hasState("Fred", 4)
+
+        game = game.roll(PinCount(6))
+        (game as IncompleteGame).hasState("Fred", 10)
+
+        game = game.roll(PinCount(5))
+        (game as IncompleteGame).hasState("Fred", 20)
+
+        game = game.roll(PinCount(1))
+        (game as CompleteGame).hasScores(21)
+    }
+
+    @Test
+    fun `strike`() {
+        var game: Game = newGame(listOf("Fred"), 2)
+        (game as IncompleteGame).hasState("Fred", 0)
+
+        game = game.roll(PinCount(10))
+        (game as IncompleteGame).hasState("Fred", 10)
+
+        game = game.roll(PinCount(5))
+        (game as IncompleteGame).hasState("Fred", 20)
+
+        game = game.roll(PinCount(1))
+        (game as CompleteGame).hasScores(22)
     }
 }
+
+private fun IncompleteGame.hasState(
+    toPlay: String,
+    vararg scores: Int,
+) {
+    assertEquals(toPlay, toRoll)
+    hasScores(*scores)
+}
+
+private fun Game.hasScores(vararg scores: Int) {
+    val actualScores = lines.map(Line::score)
+    val expectedScores = scores.map(::Score)
+    assertEquals(expectedScores, actualScores)
+}
+
