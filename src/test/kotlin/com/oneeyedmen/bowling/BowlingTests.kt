@@ -14,19 +14,34 @@ class BowlingTests {
     @Test
     fun `play a short game`() {
         var game: Game = newGame(listOf("Fred", "Barney"), 1)
-        (game as IncompleteGame).hasState("Fred", 0, 0)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][ ]"),
+            listOf("Barney", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(4))
-        (game as IncompleteGame).hasState("Fred", 4, 0)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[4][ ] 4"),
+            listOf("Barney", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(5))
-        (game as IncompleteGame).hasState("Barney", 9, 0)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("Fred", "[4][5] 9"),
+            listOf("*Barney", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(1))
-        (game as IncompleteGame).hasState("Barney", 9, 1)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("Fred", "[4][5] 9"),
+            listOf("*Barney", "[1][ ] 1")
+        )
 
         game = game.roll(PinCount(2))
-        (game as CompleteGame).hasScores(9, 3)
+        (game as CompleteGame).hasScoreCard(
+            listOf("Fred", "[4][5] 9"),
+            listOf("Barney", "[1][2] 3")
+        )
     }
 
     @Test
@@ -79,6 +94,34 @@ class BowlingTests {
         game = game.roll(PinCount(1))
         (game as CompleteGame).hasScores(22)
     }
+
+    @Test
+    fun `two strikes in a row`() {
+    }
+}
+
+private fun Game.hasScoreCard(vararg lineStrings: List<String>) {
+    assertEquals(lineStrings.asList(), toScoreCard())
+}
+
+private fun Game.toScoreCard(): List<List<String>> {
+    val lines = lines.map(Line::toFrameStrings)
+    return when (this) {
+        is CompleteGame -> lines
+        is IncompleteGame -> {
+            val player = this.toRoll
+            lines.map { if (it.first() == player) it.replacing(player, "*$player") else it }
+        }
+    }
+}
+
+private fun Line.toFrameStrings(): List<String> = listOf(player) + frames.map { it.toFrameString() }
+
+private fun Frame.toFrameString(): String = when (this) {
+    is UnplayedFrame -> "[ ][ ]"
+    is InProgressFrame -> "[${this.roll1.value}][ ] ${this.score(null, null).value}"
+    is PlainCompleteFrame -> "[${this.roll1.value}][${this.roll2.value}] ${this.score(null, null).value}"
+    else -> "??"
 }
 
 private fun IncompleteGame.hasState(
@@ -94,4 +137,6 @@ private fun Game.hasScores(vararg scores: Int) {
     val expectedScores = scores.map(::Score)
     assertEquals(expectedScores, actualScores)
 }
+
+
 
