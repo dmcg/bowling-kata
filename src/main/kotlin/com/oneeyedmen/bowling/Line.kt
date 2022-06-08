@@ -4,12 +4,17 @@ sealed class Line(
     val player: Player,
     val frames: List<Frame>
 ) {
-    val score: Score = frames.windowed(size = 2, step = 1, partialWindows = true)
-        .fold(Score(0)) { acc, window: List<Frame> ->
-            val thisFrame: Frame = window.first()
-            val nextFrame = if (window.size == 1) null else window[1]
-            val (nextRoll, nextNextRoll) = nextFrame?.let { it.roll1 to it.roll2 } ?: (null to null)
-            acc + thisFrame.score(nextRoll, nextNextRoll)
+
+    fun scores(): List<Pair<Score, Frame>> = frames.windowed(size = 3, step = 1, partialWindows = true)
+        .fold(emptyList()) { acc: List<Pair<Score, Frame>>, window: List<Frame> ->
+            val thisFrame = window.first()
+            val nextFrame = window.getOrNull(1)
+            val nextNextFrame = window.getOrNull(2)
+            val nextRoll = nextFrame?.roll1
+            val nextNextRoll = nextFrame?.roll2 ?: if (nextFrame is Strike) nextNextFrame?.roll1 else null
+            val thisScore = thisFrame.score(nextRoll, nextNextRoll)
+            val accScore = (acc.lastOrNull()?.first ?: Score(0)) + thisScore
+            acc + (accScore to thisFrame)
         }
 }
 

@@ -119,6 +119,30 @@ class BowlingTests {
 
     @Test
     fun `two strikes in a row`() {
+        var game: Game = newGame(listOf("Fred"), 3)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][ ]", "[ ][ ]", "[ ][ ]")
+        )
+
+        game = game.roll(PinCount(10))
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][X] 10", "[ ][ ]", "[ ][ ]")
+        )
+
+        game = game.roll(PinCount(10))
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][X] 20", "[ ][X] 30", "[ ][ ]")
+        )
+
+        game = game.roll(PinCount(1))
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][X] 21", "[ ][X] 32", "[1][ ] 33")
+        )
+
+        game = game.roll(PinCount(2))
+        (game as CompleteGame).hasScoreCard(
+            listOf("Fred", "[ ][X] 21", "[ ][X] 34", "[1][2] 37")
+        )
     }
 }
 
@@ -137,17 +161,8 @@ private fun Game.toScoreCard(): List<List<String>> {
     }
 }
 
-private fun Line.toFrameStrings(): List<String> = listOf(player) + frames.toFrameStrings()
-
-private fun List<Frame>.toFrameStrings() = windowed(size = 2, step = 1, partialWindows = true)
-    .fold(Score(0) to emptyList<String>()) { acc, window: List<Frame> ->
-        val thisFrame: Frame = window.first()
-        val nextFrame = if (window.size == 1) null else window[1]
-        val (nextRoll, nextNextRoll) = nextFrame?.let { it.roll1 to it.roll2 } ?: (null to null)
-        val thisScore = thisFrame.score(nextRoll, nextNextRoll)
-        val accScore = acc.first + thisScore
-        accScore to acc.second + thisFrame.toFrameString(accScore)
-    }.second
+private fun Line.toFrameStrings(): List<String> = listOf(player) +
+        this.scores().map { (score, frame) -> frame.toFrameString(score) }
 
 private fun Frame.toFrameString(accScore: Score): String {
     val scoreString = accScore.value.toString()
@@ -160,12 +175,5 @@ private fun Frame.toFrameString(accScore: Score): String {
         else -> "??"
     }
 }
-
-private fun Game.hasScores(vararg scores: Int) {
-    val actualScores = lines.map(Line::score)
-    val expectedScores = scores.map(::Score)
-    assertEquals(expectedScores, actualScores)
-}
-
 
 
