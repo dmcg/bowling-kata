@@ -6,22 +6,22 @@ sealed class Frame {
     abstract fun score(nextRoll: PinCount?, nextNextRoll: PinCount?): Score
 }
 
-sealed class PlayableFrame : Frame() {
+sealed class IncompleteFrame : Frame() {
     abstract fun roll(pinCount: PinCount): Frame
 }
 
-class UnplayedFrame : PlayableFrame() {
+class UnplayedFrame : IncompleteFrame() {
     override fun score(nextRoll: PinCount?, nextNextRoll: PinCount?) = Score(0)
     override fun roll(pinCount: PinCount): Frame =
         when (pinCount.value) {
             10 -> Strike()
-            else -> IncompleteFrame(pinCount)
+            else -> InProgressFrame(pinCount)
         }
 }
 
-class IncompleteFrame(
+class InProgressFrame(
     override val roll1: PinCount
-) : PlayableFrame() {
+) : IncompleteFrame() {
     override fun score(nextRoll: PinCount?, nextNextRoll: PinCount?) = roll1.asScore()
     override fun roll(pinCount: PinCount) = when ((roll1 + pinCount).value) {
         10 -> Spare(roll1, pinCount)

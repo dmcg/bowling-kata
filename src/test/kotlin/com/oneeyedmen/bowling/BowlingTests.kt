@@ -30,7 +30,7 @@ class BowlingTests {
     }
 
     @Test
-    fun `spare`() {
+    fun spare() {
         var game: Game = newGame(listOf("Fred"), 2)
         (game as IncompleteGame).hasState("Fred", 0)
 
@@ -48,7 +48,25 @@ class BowlingTests {
     }
 
     @Test
-    fun `strike`() {
+    fun `spare as 10`() {
+        var game: Game = newGame(listOf("Fred"), 2)
+        (game as IncompleteGame).hasState("Fred", 0)
+
+        game = game.roll(PinCount(0))
+        (game as IncompleteGame).hasState("Fred", 0)
+
+        game = game.roll(PinCount(10))
+        (game as IncompleteGame).hasState("Fred", 10)
+
+        game = game.roll(PinCount(5))
+        (game as IncompleteGame).hasState("Fred", 20)
+
+        game = game.roll(PinCount(1))
+        (game as CompleteGame).hasScores(21)
+    }
+
+    @Test
+    fun strike() {
         var game: Game = newGame(listOf("Fred"), 2)
         (game as IncompleteGame).hasState("Fred", 0)
 

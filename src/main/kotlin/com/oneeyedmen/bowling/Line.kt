@@ -13,9 +13,9 @@ sealed class Line(
         }
 }
 
-class CompletedLine(player: Player, frames: List<Frame>) : Line(player, frames)
+class CompleteLine(player: Player, frames: List<Frame>) : Line(player, frames)
 
-class PlayableLine(
+class IncompleteLine(
     player: Player,
     frames: List<Frame>
 ) : Line(player, frames) {
@@ -25,15 +25,15 @@ class PlayableLine(
         frames: Int = 10
     ) : this(player, (0.until(frames)).map { UnplayedFrame() })
 
-    val currentFrame: PlayableFrame =
-        (frames.find { it is IncompleteFrame } ?: frames.find { it is UnplayedFrame }
-        ?: error("No playable frame")) as PlayableFrame
+    val currentFrame: IncompleteFrame =
+        (frames.find { it is InProgressFrame } ?: frames.find { it is UnplayedFrame }
+        ?: error("No playable frame")) as IncompleteFrame
 
     fun roll(pinCount: PinCount): Line {
         val newFrames = frames.replacing(currentFrame, currentFrame.roll(pinCount))
         return when {
-            newFrames.last() is PlayableFrame -> PlayableLine(player, newFrames)
-            else -> CompletedLine(player, newFrames)
+            newFrames.last() is IncompleteFrame -> IncompleteLine(player, newFrames)
+            else -> CompleteLine(player, newFrames)
         }
     }
 }
