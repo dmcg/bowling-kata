@@ -6,12 +6,6 @@ import kotlin.test.assertEquals
 class BowlingTests {
 
     @Test
-    fun `new game`() {
-        val game: IncompleteGame = newGame(listOf("Fred", "Barney"))
-        game.hasState("Fred", 0, 0)
-    }
-
-    @Test
     fun `play a short game`() {
         var game: Game = newGame(listOf("Fred", "Barney"), 1)
         (game as IncompleteGame).hasScoreCard(
@@ -47,52 +41,80 @@ class BowlingTests {
     @Test
     fun spare() {
         var game: Game = newGame(listOf("Fred"), 2)
-        (game as IncompleteGame).hasState("Fred", 0)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][ ]", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(4))
-        (game as IncompleteGame).hasState("Fred", 4)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[4][ ] 4", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(6))
-        (game as IncompleteGame).hasState("Fred", 10)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[4][/] 10", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(5))
-        (game as IncompleteGame).hasState("Fred", 20)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[4][/] 15", "[5][ ] 20")
+        )
 
         game = game.roll(PinCount(1))
-        (game as CompleteGame).hasScores(21)
+        (game as CompleteGame).hasScoreCard(
+            listOf("Fred", "[4][/] 15", "[5][1] 21")
+        )
     }
 
     @Test
     fun `spare as 10`() {
         var game: Game = newGame(listOf("Fred"), 2)
-        (game as IncompleteGame).hasState("Fred", 0)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][ ]", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(0))
-        (game as IncompleteGame).hasState("Fred", 0)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[0][ ] 0", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(10))
-        (game as IncompleteGame).hasState("Fred", 10)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[0][/] 10", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(5))
-        (game as IncompleteGame).hasState("Fred", 20)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[0][/] 15", "[5][ ] 20")
+        )
 
         game = game.roll(PinCount(1))
-        (game as CompleteGame).hasScores(21)
+        (game as CompleteGame).hasScoreCard(
+            listOf("Fred", "[0][/] 15", "[5][1] 21")
+        )
     }
 
     @Test
     fun strike() {
         var game: Game = newGame(listOf("Fred"), 2)
-        (game as IncompleteGame).hasState("Fred", 0)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][ ]", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(10))
-        (game as IncompleteGame).hasState("Fred", 10)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][X] 10", "[ ][ ]")
+        )
 
         game = game.roll(PinCount(5))
-        (game as IncompleteGame).hasState("Fred", 20)
+        (game as IncompleteGame).hasScoreCard(
+            listOf("*Fred", "[ ][X] 15", "[5][ ] 20")
+        )
 
         game = game.roll(PinCount(1))
-        (game as CompleteGame).hasScores(22)
+        (game as CompleteGame).hasScoreCard(
+            listOf("Fred", "[ ][X] 16", "[5][1] 22")
+        )
     }
 
     @Test
@@ -115,21 +137,28 @@ private fun Game.toScoreCard(): List<List<String>> {
     }
 }
 
-private fun Line.toFrameStrings(): List<String> = listOf(player) + frames.map { it.toFrameString() }
+private fun Line.toFrameStrings(): List<String> = listOf(player) + frames.toFrameStrings()
 
-private fun Frame.toFrameString(): String = when (this) {
-    is UnplayedFrame -> "[ ][ ]"
-    is InProgressFrame -> "[${this.roll1.value}][ ] ${this.score(null, null).value}"
-    is PlainCompleteFrame -> "[${this.roll1.value}][${this.roll2.value}] ${this.score(null, null).value}"
-    else -> "??"
-}
+private fun List<Frame>.toFrameStrings() = windowed(size = 2, step = 1, partialWindows = true)
+    .fold(Score(0) to emptyList<String>()) { acc, window: List<Frame> ->
+        val thisFrame: Frame = window.first()
+        val nextFrame = if (window.size == 1) null else window[1]
+        val (nextRoll, nextNextRoll) = nextFrame?.let { it.roll1 to it.roll2 } ?: (null to null)
+        val thisScore = thisFrame.score(nextRoll, nextNextRoll)
+        val accScore = acc.first + thisScore
+        accScore to acc.second + thisFrame.toFrameString(accScore)
+    }.second
 
-private fun IncompleteGame.hasState(
-    toPlay: String,
-    vararg scores: Int,
-) {
-    assertEquals(toPlay, toRoll)
-    hasScores(*scores)
+private fun Frame.toFrameString(accScore: Score): String {
+    val scoreString = accScore.value.toString()
+    return when (this) {
+        is UnplayedFrame -> "[ ][ ]"
+        is InProgressFrame -> "[${this.roll1.value}][ ] $scoreString"
+        is PlainCompleteFrame -> "[${this.roll1.value}][${this.roll2.value}] $scoreString"
+        is Spare -> "[${this.roll1.value}][/] $scoreString"
+        is Strike -> "[ ][X] $scoreString"
+        else -> "??"
+    }
 }
 
 private fun Game.hasScores(vararg scores: Int) {
